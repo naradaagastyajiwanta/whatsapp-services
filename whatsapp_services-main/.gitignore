@@ -1,0 +1,16 @@
+node_modules
+.env
+.wwebjs_cache
+.wwebjs_auth
+.vscode
+uploads
+tests
+logs
+.env.local
+.env.development
+docker-compose.local.yml
+start-local.sh
+stop-local.sh
+Dockerfile.local
+restore-sessions.sh
+backup-whatsapp-sessions.sh

@@ -1,0 +1,90 @@
+# GNU nano 6.2                                                                                                                                                                                                                                                                                                                                                                                   docker-compose.yml *                                                                                                                                                                                                                                                                                                                                                                                           
+version: '3.8'
+
+services:
+  dashboard:
+    build: 
+      context: ./dashboard
+      dockerfile: Dockerfile
+      args:
+        - BUILD_TIME
+    image: registry.gitlab.com/airadms/whatsapp_services:frontend-production
+    container_name: dashboard
+    restart: unless-stopped
+    ports:
+      - ${DASHBOARD_PORT:-4001}:${DASHBOARD_PORT:-4001}
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - API_URL=http://node-api:${API_PORT:-3000}
+    depends_on:
+      - api
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - app-network
+
+  api:
+    build: 
+      context: ./node-api
+      dockerfile: Dockerfile
+      args:
+        - BUILD_TIME
+    image: registry.gitlab.com/airadms/whatsapp_services:backend-production
+    container_name: node-api
+    restart: unless-stopped
+    ports:
+      - ${API_PORT:-3000}:${API_PORT:-3000}
+    volumes:
+      - whatsapp_sessions:/app/.wwebjs_auth
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DB_HOST=${DB_HOST:-10.172.0.2}
+      - DB_USER=${MYSQL_USER:-aira_service}
+      - DB_PASSWORD=${MYSQL_PASSWORD:-LojtW90Y8d#KntT}
+      - DB_NAME=${MYSQL_DATABASE:-aira_service}
+      - DB_PORT=${DB_PORT}
+      - SESSION_SECRET=${SESSION_SECRET:-your_secret_key}
+      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret_key}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - ASSISTANT_URL=${ASSISTANT_URL:-https://agent.airabot.id}
+      - MAX_CONCURRENT_CLIENTS=${MAX_CONCURRENT_CLIENTS:-10}
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+      - PUPPETEER_DISABLE_DEV_SHM_USAGE=true
+      - NODE_OPTIONS=--max-old-space-size=1024
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: '2G'
+        reservations:
+          cpus: '0.5'
+          memory: '1G'
+    shm_size: '1gb'
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  whatsapp_sessions:
+    driver: local

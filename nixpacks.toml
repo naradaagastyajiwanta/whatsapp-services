@@ -1,0 +1,16 @@
+[phases.setup]
+nixPkgs = ["nodejs", "chromium"]
+
+[phases.install]
+cmds = ["cd whatsapp_services-main/node-api && npm ci"]
+
+[phases.build]
+cmds = ["cd whatsapp_services-main/node-api && npm run build"]
+
+[start]
+cmd = "cd whatsapp_services-main/node-api && node --no-warnings index.js"
+
+[variables]
+PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium"
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+PUPPETEER_DISABLE_DEV_SHM_USAGE = "true"

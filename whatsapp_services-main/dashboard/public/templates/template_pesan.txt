@@ -1,0 +1,6 @@
+Halo [nama] dari [instansi],
+
+Ini adalah pesan percakapan WhatsApp yang bisa kamu kirimkan!
+link [wag]
+
+Terima kasih.

@@ -1,0 +1,64 @@
+stages:
+  - build
+
+build_and_push:
+  stage: build
+  image: docker/compose:latest
+  services:
+    - docker:dind
+  variables:
+    DOCKER_DRIVER: overlay2
+
+  tags:
+    - gitlab-org-docker
+  script:
+    - echo "Running in $ENV environment"
+    # Login ke GitLab Container Registry
+    - echo "Logging in to GitLab Container Registry"
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_JOB_TOKEN" $CI_REGISTRY
+    # Pull image frontend jika tersedia
+    # - docker-compose build --no-cache
+    # - echo "Pulling existing frontend image if available"
+    # - docker pull $CI_REGISTRY_IMAGE:frontend-production || true
+    # - echo "Pulling existing frontend image if available"
+    # - docker pull $CI_REGISTRY_IMAGE:frontend-production || echo "Frontend image not found, building a new one"
+
+    # Build ulang semua services tanpa cache
+    - echo "Building frontend service using docker-compose without cache"
+    - docker-compose build --no-cache --build-arg BUILD_TIME="$(date +'%Y-%m-%d %H:%M:%S')" dashboard 
+
+    # Push frontend image ke GitLab Container Registry
+    - echo "Pushing frontend image to GitLab Container Registry"    
+    - docker tag registry.gitlab.com/airadms/whatsapp_services:frontend-production $CI_REGISTRY_IMAGE:frontend-$ENV
+    - docker push $CI_REGISTRY_IMAGE:frontend-$ENV
+    # - echo "Pulling existing backend image if available"
+    # - docker pull $CI_REGISTRY_IMAGE:backend-production || true
+
+    # Pull image backend jika tersedia
+    # - echo "Pulling existing backend image if available..."
+    # - docker pull $CI_REGISTRY_IMAGE:backend-production || echo "Backend image not found, building a new one"
+
+    # Build ulang backend service tanpa cache
+    - echo "Building backend service using docker-compose without cache"
+    - docker-compose build --no-cache --build-arg BUILD_TIME="$(date +'%Y-%m-%d %H:%M:%S')" api 
+
+    # Push backend image ke GitLab Container Registry
+    - echo "Pushing backend image to GitLab Container Registry"
+    - docker tag registry.gitlab.com/airadms/whatsapp_services:backend-production $CI_REGISTRY_IMAGE:backend-$ENV
+    - docker push $CI_REGISTRY_IMAGE:backend-$ENV
+
+    # Verifikasi label untuk dashboard
+    - echo "Inspecting image for labels frontend"
+    - docker inspect registry.gitlab.com/airadms/whatsapp_services:frontend-production | grep -i "build_time" || echo "LABEL build_time not found"
+
+    # Verifikasi label untuk node-api
+    - echo "Inspecting image for labels backend"
+    - docker inspect registry.gitlab.com/airadms/whatsapp_services:backend-production | grep -i "build_time" || echo "LABEL build_time not found"
+
+  rules:
+    - if: '$CI_COMMIT_REF_NAME == "main"'
+      variables:
+        ENV: "production"
+    - if: '$CI_COMMIT_REF_NAME != "main"'
+      variables:
+        ENV: "development"
