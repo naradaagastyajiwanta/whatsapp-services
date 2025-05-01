@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs", "chromium", "python3", "gcc", "gcc-c++", "make"]
+nixPkgs = ["nodejs", "chromium", "python3", "gcc", "make"]
 
 [phases.install]
 cmds = ["cd node-api && npm install"]
