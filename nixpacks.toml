@@ -2,13 +2,13 @@
 nixPkgs = ["nodejs", "chromium"]
 
 [phases.install]
-cmds = ["cd whatsapp_services-main/node-api && npm ci"]
+cmds = ["cd node-api && npm ci"]
 
 [phases.build]
-cmds = ["cd whatsapp_services-main/node-api && npm run build"]
+cmds = ["cd node-api && npm run build"]
 
 [start]
-cmd = "cd whatsapp_services-main/node-api && node --no-warnings index.js"
+cmd = "cd node-api && node --no-warnings index.js"
 
 [variables]
 PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium"

@@ -1,1 +1,1 @@
-web: cd whatsapp_services-main/node-api && npm ci && node --no-warnings index.js
+web: cd node-api && npm ci && node --no-warnings index.js
