@@ -21,6 +21,11 @@ const port = process.env.PORT || process.env.API_PORT || 3000;
 // Set a different port for the main application to avoid conflicts
 process.env.INTERNAL_API_PORT = '3001';
 
+// Enable headless mode for WhatsApp in Railway environment
+// Ini akan mencegah WhatsApp Web dari mencoba inisialisasi
+// yang mungkin menyebabkan crash di lingkungan container
+process.env.WHATSAPP_HEADLESS = 'true';
+
 // Basic middleware
 app.use(cors());
 app.use(express.json());
@@ -89,8 +94,14 @@ server.listen(port, '0.0.0.0', () => {
       // or in a local environment (where files are in the node-api directory)
       const indexPath = require('fs').existsSync('./index.js') ? './index.js' : './node-api/index.js';
       console.log(`Loading application from: ${indexPath}`);
-      require(indexPath);
-      console.log('Full application initialized successfully');
+      
+      // Wrap the require in a try-catch to prevent crash if the main app fails
+      try {
+        require(indexPath);
+        console.log('Full application initialized successfully');
+      } catch (appError) {
+        console.error('Error in main application, but health check server will continue running:', appError);
+      }
     } catch (error) {
       console.error('Error initializing full application:', error);
     }

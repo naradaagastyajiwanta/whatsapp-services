@@ -9,7 +9,16 @@ class WhatsAppService {
         this.qrCode = null;
         this.isReady = false;
         this.isAuthenticated = false;
-        this.initializeClient();
+        
+        // Cek apakah mode headless (tanpa WhatsApp) diaktifkan
+        this.headlessMode = process.env.WHATSAPP_HEADLESS === 'true';
+        
+        if (!this.headlessMode) {
+            // Hanya inisialisasi client jika tidak dalam mode headless
+            this.initializeClient();
+        } else {
+            console.log('WhatsApp running in headless mode. Client not initialized.');
+        }
     }
 
     async initializeClient() {
@@ -90,7 +99,10 @@ class WhatsAppService {
             });
 
             console.log('Initializing WhatsApp client...');
-            await this.client.initialize();
+            await this.client.initialize().catch(err => {
+                console.error('Failed to initialize WhatsApp client:', err);
+                throw err;
+            });
             console.log('WhatsApp client initialization completed');
 
         } catch (error) {
@@ -101,6 +113,14 @@ class WhatsAppService {
 
     async getQRCode() {
         try {
+            if (this.headlessMode) {
+                return {
+                    success: false,
+                    message: 'WhatsApp is running in headless mode',
+                    status: 'headless'
+                };
+            }
+            
             if (this.isAuthenticated) {
                 return {
                     success: false,
@@ -134,10 +154,20 @@ class WhatsAppService {
 
     // Method untuk mengecek status koneksi
     getStatus() {
+        if (this.headlessMode) {
+            return {
+                isReady: false,
+                isAuthenticated: false,
+                hasQR: false,
+                headlessMode: true
+            };
+        }
+        
         return {
             isReady: this.isReady,
             isAuthenticated: this.isAuthenticated,
-            hasQR: !!this.qrCodeBase64
+            hasQR: !!this.qrCodeBase64,
+            headlessMode: false
         };
     }
 
@@ -149,6 +179,13 @@ class WhatsAppService {
     // Method untuk mengirim pesan WhatsApp
     async sendMessage(phone, message) {
         try {
+            if (this.headlessMode) {
+                return {
+                    success: false,
+                    error: 'WhatsApp is running in headless mode'
+                };
+            }
+            
             if (!this.client || !this.isReady) {
                 return {
                     success: false,
