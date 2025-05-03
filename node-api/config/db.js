@@ -2,50 +2,67 @@ const { Sequelize } = require('sequelize');
 require('dotenv').config();
 const logger = require('../utils/logging'); // Impor logger
 
-// Opsi 1: Menggunakan string koneksi DATABASE_URL (disarankan untuk Railway)
-const sequelize = process.env.DATABASE_URL 
-    ? new Sequelize(process.env.DATABASE_URL, {
+// Determine if we're running in Railway
+const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
+
+// Configure database connection options
+const getDbConfig = () => {
+    // Default SSL configuration
+    const sslConfig = {
+        require: true,
+        rejectUnauthorized: false // Needed for self-signed certs
+    };
+
+    // Default connection options
+    const connectionOptions = {
         dialect: 'postgres',
         logging: (msg) => logger.info(msg),
         dialectOptions: {
-            ssl: {
-                require: true,
-                rejectUnauthorized: false // Diperlukan jika menggunakan SSL
-            },
-            connectTimeout: 30000  // 30 detik
+            ssl: sslConfig,
+            connectTimeout: 30000  // 30 seconds
         },
         pool: {
             max: 5,
             min: 0,
-            acquire: 60000, // 60 detik
+            acquire: 60000, // 60 seconds
             idle: 10000
         }
-    })
-    // Opsi 2: Menggunakan kredensial terpisah (fallback)
-    : new Sequelize(
+    };
+
+    // If DATABASE_URL is provided (Railway provides this)
+    if (process.env.DATABASE_URL) {
+        logger.info('Using DATABASE_URL for connection');
+        
+        // For Railway, we need to ensure we're connecting to the correct host
+        if (isRailway) {
+            // In Railway, use the internal network hostname
+            const railwayDbUrl = process.env.DATABASE_URL.replace('localhost', 'postgres.railway.internal')
+                                                        .replace('127.0.0.1', 'postgres.railway.internal')
+                                                        .replace('::1', 'postgres.railway.internal');
+            
+            logger.info(`Connecting to Railway database: ${railwayDbUrl.replace(/:[^:]*@/, ':****@')}`);
+            return new Sequelize(railwayDbUrl, connectionOptions);
+        }
+        
+        return new Sequelize(process.env.DATABASE_URL, connectionOptions);
+    }
+    
+    // Fallback to individual connection parameters
+    logger.info('Using individual database parameters for connection');
+    return new Sequelize(
         process.env.DB_NAME, 
         process.env.DB_USER, 
         process.env.DB_PASSWORD, 
         {
-            host: process.env.DB_HOST,
-            port: process.env.DB_PORT,
-            dialect: 'postgres',
-            logging: (msg) => logger.info(msg),
-            dialectOptions: {
-                ssl: {
-                    require: true,
-                    rejectUnauthorized: false
-                },
-                connectTimeout: 30000  // 30 detik
-            },
-            pool: {
-                max: 5,
-                min: 0,
-                acquire: 60000, // 60 detik
-                idle: 10000
-            }
+            ...connectionOptions,
+            host: isRailway ? 'postgres.railway.internal' : (process.env.DB_HOST || 'localhost'),
+            port: process.env.DB_PORT || 5432
         }
     );
+};
+
+// Initialize Sequelize with the appropriate configuration
+const sequelize = getDbConfig();
 
 const connectDB = async () => {
     const maxRetries = 5;
@@ -74,29 +91,33 @@ const connectDB = async () => {
 
             logger.info('All models were synchronized successfully.');
             
-            // Tampilkan tabel beserta kolomnya (PostgreSQL syntax)
-            const [tables] = await sequelize.query(`
-                SELECT table_name 
-                FROM information_schema.tables 
-                WHERE table_schema = 'public'
-            `);
-            
-            logger.info('Tables and their columns:');
-            for (const table of tables) {
-                const tableName = table.table_name;
-                
-                // Query untuk mendapatkan kolom dari setiap tabel (PostgreSQL)
-                const [columns] = await sequelize.query(`
-                    SELECT column_name, data_type, is_nullable, column_default
-                    FROM information_schema.columns
-                    WHERE table_schema = 'public' AND table_name = '${tableName}'
+            // Display tables and their columns (PostgreSQL syntax)
+            try {
+                const [tables] = await sequelize.query(`
+                    SELECT table_name 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'public'
                 `);
                 
-                logger.info(`\nTable: ${tableName}`);
-                logger.info('Columns:');
-                columns.forEach(column => {
-                    logger.info(`- ${column.column_name}: ${column.data_type} ${column.is_nullable === 'NO' ? 'NOT NULL' : 'NULL'} ${column.column_default ? `DEFAULT ${column.column_default}` : ''}`);
-                });
+                logger.info('Tables and their columns:');
+                for (const table of tables) {
+                    const tableName = table.table_name;
+                    
+                    // Query to get columns from each table (PostgreSQL)
+                    const [columns] = await sequelize.query(`
+                        SELECT column_name, data_type, is_nullable, column_default
+                        FROM information_schema.columns
+                        WHERE table_schema = 'public' AND table_name = '${tableName}'
+                    `);
+                    
+                    logger.info(`\nTable: ${tableName}`);
+                    logger.info('Columns:');
+                    columns.forEach(column => {
+                        logger.info(`- ${column.column_name}: ${column.data_type} ${column.is_nullable === 'NO' ? 'NOT NULL' : 'NULL'} ${column.column_default ? `DEFAULT ${column.column_default}` : ''}`);
+                    });
+                }
+            } catch (error) {
+                logger.warn('Could not fetch table information:', error.message);
             }
 
             return;
