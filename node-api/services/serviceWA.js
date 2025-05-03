@@ -28,27 +28,35 @@ class WhatsAppService {
                         '--disable-accelerated-2d-canvas',
                         '--no-first-run',
                         '--no-zygote',
-                        '--disable-gpu'
-                    ]
+                        '--disable-gpu',
+                        '--disable-extensions',
+                        '--disable-features=site-per-process',
+                        '--ignore-certificate-errors',
+                        '--ignore-certificate-errors-spki-list',
+                        '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                    ],
+                    executablePath: process.env.CHROME_BIN || null,
+                    ignoreHTTPSErrors: true
                 }
             });
 
             this.client.on('qr', async (qr) => {
-                console.log('QR Code string:', qr.substring(0, 50) + '...');
-                console.log('Event QR triggered');
+                console.log('QR Code received:', qr.substring(0, 20) + '...');
+                console.log('QR Code length:', qr.length);
+                console.log('Event QR triggered at:', new Date().toISOString());
                 try {
                     this.qrCode = qr;
                     this.qrCodeBase64 = await new Promise((resolve, reject) => {
-                        qrcode.toDataURL(qr, (err, url) => {
+                        qrcode.toDataURL(qr, { errorCorrectionLevel: 'H' }, (err, url) => {
                             if (err) {
                                 console.error('QR generation error:', err);
                                 reject(err);
                             }
-                            console.log('Base64 generated successfully');
+                            console.log('Base64 QR generated successfully, length:', url.length);
                             resolve(url);
                         });
                     });
-                    console.log('QR Code base64 length:', this.qrCodeBase64.length);
+                    console.log('QR Code base64 generated at:', new Date().toISOString());
                 } catch (error) {
                     console.error('Detailed QR Generation Error:', error);
                     this.qrCode = null;
