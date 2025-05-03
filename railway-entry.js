@@ -18,6 +18,9 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || process.env.API_PORT || 3000;
 
+// Set a different port for the main application to avoid conflicts
+process.env.INTERNAL_API_PORT = '3001';
+
 // Basic middleware
 app.use(cors());
 app.use(express.json());
@@ -38,6 +41,35 @@ app.get('/', (req, res) => {
     message: 'WhatsApp Services API is running',
     timestamp: new Date().toISOString()
   });
+});
+
+// API proxy to forward requests to the main application
+app.use('/api', (req, res) => {
+  // Forward API requests to the internal application
+  const http = require('http');
+  const options = {
+    hostname: 'localhost',
+    port: process.env.INTERNAL_API_PORT,
+    path: req.url,
+    method: req.method,
+    headers: req.headers
+  };
+
+  const proxyReq = http.request(options, (proxyRes) => {
+    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+    proxyRes.pipe(res);
+  });
+
+  proxyReq.on('error', (e) => {
+    console.error('Proxy request error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  });
+
+  if (req.body) {
+    proxyReq.write(JSON.stringify(req.body));
+  }
+  
+  proxyReq.end();
 });
 
 // Create HTTP server

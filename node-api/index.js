@@ -11,7 +11,8 @@ const { initCronJobs } = require('./cron-jobs');
 
 const app = express();
 // Use Railway's PORT environment variable or fallback to API_PORT or 3000
-const port = process.env.PORT || process.env.API_PORT || 3000;
+// If INTERNAL_API_PORT is set (by railway-entry.js), use that instead
+const port = process.env.INTERNAL_API_PORT || process.env.PORT || process.env.API_PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
