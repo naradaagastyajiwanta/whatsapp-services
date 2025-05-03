@@ -23,6 +23,10 @@ class WhatsAppService {
 
     async initializeClient() {
         try {
+            // Deteksi lingkungan Railway
+            const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
+            console.log(`Initializing WhatsApp client in ${isRailway ? 'Railway' : 'local'} environment`);
+            
             // Menggunakan LocalAuth dari whatsapp-web.js
             this.client = new Client({
                 authStrategy: new LocalAuth({
@@ -44,7 +48,8 @@ class WhatsAppService {
                         '--ignore-certificate-errors-spki-list',
                         '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                     ],
-                    executablePath: process.env.CHROME_BIN || null,
+                    // Gunakan Chrome yang sudah terinstall di Railway jika tersedia
+                    executablePath: isRailway ? '/usr/bin/chromium-browser' : (process.env.CHROME_BIN || null),
                     ignoreHTTPSErrors: true
                 }
             });
@@ -55,8 +60,19 @@ class WhatsAppService {
                 console.log('Event QR triggered at:', new Date().toISOString());
                 try {
                     this.qrCode = qr;
+                    // Tambahkan timeout untuk memastikan QR code diproses dengan benar
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
                     this.qrCodeBase64 = await new Promise((resolve, reject) => {
-                        qrcode.toDataURL(qr, { errorCorrectionLevel: 'H' }, (err, url) => {
+                        qrcode.toDataURL(qr, { 
+                            errorCorrectionLevel: 'H',
+                            margin: 4,
+                            scale: 8,
+                            color: {
+                                dark: '#000000',
+                                light: '#ffffff'
+                            }
+                        }, (err, url) => {
                             if (err) {
                                 console.error('QR generation error:', err);
                                 reject(err);
@@ -66,6 +82,9 @@ class WhatsAppService {
                         });
                     });
                     console.log('QR Code base64 generated at:', new Date().toISOString());
+                    
+                    // Log QR code untuk debugging di Railway
+                    console.log('QR Code URL:', this.qrCodeBase64.substring(0, 50) + '...');
                 } catch (error) {
                     console.error('Detailed QR Generation Error:', error);
                     this.qrCode = null;

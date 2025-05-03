@@ -21,10 +21,8 @@ const port = process.env.PORT || process.env.API_PORT || 3000;
 // Set a different port for the main application to avoid conflicts
 process.env.INTERNAL_API_PORT = '3001';
 
-// Enable headless mode for WhatsApp in Railway environment
-// Ini akan mencegah WhatsApp Web dari mencoba inisialisasi
-// yang mungkin menyebabkan crash di lingkungan container
-process.env.WHATSAPP_HEADLESS = 'true';
+// Aktifkan WhatsApp (nonaktifkan mode headless)
+process.env.WHATSAPP_HEADLESS = 'false';
 
 // Basic middleware
 app.use(cors());
