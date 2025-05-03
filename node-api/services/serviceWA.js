@@ -153,7 +153,51 @@ class WhatsAppService {
             hasQR: !!this.qrCodeBase64
         };
     }
-}
 
+    // Method untuk mendapatkan client WhatsApp
+    getClient() {
+        return this.client;
+    }
+
+    // Method untuk mengirim pesan WhatsApp
+    async sendMessage(phone, message) {
+        try {
+            if (!this.client || !this.isReady) {
+                return {
+                    success: false,
+                    error: 'WhatsApp client is not ready'
+                };
+            }
+
+            // Format nomor telepon jika belum dalam format @c.us
+            const formattedNumber = phone.includes('@c.us') ? phone : `${phone}@c.us`;
+            
+            // Cek apakah nomor terdaftar di WhatsApp
+            const isRegistered = await this.client.isRegisteredUser(formattedNumber);
+            if (!isRegistered) {
+                return {
+                    success: false,
+                    error: 'Phone number is not registered on WhatsApp'
+                };
+            }
+
+            // Kirim pesan
+            const result = await this.client.sendMessage(formattedNumber, message);
+            
+            return {
+                success: true,
+                messageId: result.id._serialized,
+                timestamp: result.timestamp,
+                message: 'Message sent successfully'
+            };
+        } catch (error) {
+            console.error('Error sending message:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+}
 
 module.exports = new WhatsAppService();

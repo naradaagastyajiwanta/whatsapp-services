@@ -39,6 +39,10 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 
+// Tambahkan rute WhatsApp
+const waRoutes = require('./routes/waRoutes');
+app.use('/api/whatsapp', waRoutes);
+
 app.use((req, res, next) => {
     res.status(404).json({
         message: 'Route tidak ditemukan'
