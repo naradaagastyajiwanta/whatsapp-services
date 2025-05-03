@@ -1,1 +1,1 @@
-web: cd node-api && npm install && node --no-warnings index.js
+web: node --no-warnings node-api/index.js

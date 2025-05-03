@@ -2,13 +2,13 @@
 nixPkgs = ["nodejs", "chromium", "python3", "gcc"]
 
 [phases.install]
-cmds = ["cd node-api && npm install"]
+cmds = ["cp -r node-api/* . && npm install"]
 
 [phases.build]
-cmds = ["cd node-api && npm run build"]
+cmds = ["npm run build"]
 
 [start]
-cmd = "cd node-api && node --no-warnings index.js"
+cmd = "node --no-warnings index.js"
 
 [variables]
 PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium"
