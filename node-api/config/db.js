@@ -29,21 +29,36 @@ const getDbConfig = () => {
         }
     };
 
-    // If DATABASE_URL is provided (Railway provides this)
+    // For Railway deployment, use explicit connection details
+    if (isRailway) {
+        logger.info('Using Railway database configuration');
+        
+        // Use explicit Railway PostgreSQL variables
+        const dbConfig = {
+            host: 'postgres.railway.internal',
+            port: 5432,
+            database: 'railway',
+            username: 'railway',
+            password: process.env.PGPASSWORD || process.env.POSTGRES_PASSWORD
+        };
+        
+        logger.info(`Connecting to Railway database at ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
+        
+        return new Sequelize(
+            dbConfig.database,
+            dbConfig.username,
+            dbConfig.password,
+            {
+                ...connectionOptions,
+                host: dbConfig.host,
+                port: dbConfig.port
+            }
+        );
+    }
+    
+    // If DATABASE_URL is provided (for non-Railway environments)
     if (process.env.DATABASE_URL) {
         logger.info('Using DATABASE_URL for connection');
-        
-        // For Railway, we need to ensure we're connecting to the correct host
-        if (isRailway) {
-            // In Railway, use the internal network hostname
-            const railwayDbUrl = process.env.DATABASE_URL.replace('localhost', 'postgres.railway.internal')
-                                                        .replace('127.0.0.1', 'postgres.railway.internal')
-                                                        .replace('::1', 'postgres.railway.internal');
-            
-            logger.info(`Connecting to Railway database: ${railwayDbUrl.replace(/:[^:]*@/, ':****@')}`);
-            return new Sequelize(railwayDbUrl, connectionOptions);
-        }
-        
         return new Sequelize(process.env.DATABASE_URL, connectionOptions);
     }
     
@@ -55,7 +70,7 @@ const getDbConfig = () => {
         process.env.DB_PASSWORD, 
         {
             ...connectionOptions,
-            host: isRailway ? 'postgres.railway.internal' : (process.env.DB_HOST || 'localhost'),
+            host: process.env.DB_HOST || 'localhost',
             port: process.env.DB_PORT || 5432
         }
     );
