@@ -4,7 +4,6 @@ const http = require('http');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const authRoutes = require('./routes/authRoutes');
-const setupWebSocket = require('./websocket/websocket');
 const logger = require('./utils/logging'); // Import logger
 
 // Import cron jobs
@@ -19,7 +18,16 @@ app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Health check endpoint untuk Railway
+// Health check endpoint for Railway
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'WhatsApp Services API is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Original health check endpoint
 app.get('/', (req, res) => {
   res.status(200).json({
     status: 'ok',
@@ -38,40 +46,65 @@ app.use((req, res, next) => {
 
 const server = http.createServer(app);
 
-// Store the WebSocket server instance
-const wsServer = setupWebSocket(server);
-
-// Inisialisasi cron jobs
+// Initialize WebSocket only if not in a test environment
+let wsServer = null;
 try {
-    initCronJobs();
+  // Dynamically import the WebSocket setup to prevent errors if it fails
+  const setupWebSocket = require('./websocket/websocket');
+  wsServer = setupWebSocket(server);
+  logger.info('WebSocket server initialized successfully');
 } catch (error) {
-    logger.error('Error initializing cron jobs:', error);
-    console.error('Error initializing cron jobs:', error);
+  logger.error('Failed to initialize WebSocket server:', error);
+  console.error('Failed to initialize WebSocket server:', error);
+}
+
+// Initialize cron jobs only if not in a test environment
+try {
+  if (process.env.DISABLE_CRON_JOBS !== 'true') {
+    initCronJobs();
+    logger.info('Cron jobs initialized successfully');
+  } else {
+    logger.info('Cron jobs disabled by environment variable');
+  }
+} catch (error) {
+  logger.error('Failed to initialize cron jobs:', error);
+  console.error('Failed to initialize cron jobs:', error);
 }
 
 const handleShutdown = async () => {
-    logger.info('Server shutting down...');
-    if (wsServer && typeof wsServer.close === 'function') {
-        wsServer.close(() => {
-            logger.info('WebSocket server closed.');
-            process.exit(0);
-        });
-    } else {
-        logger.info('No WebSocket server to close or already closed.');
+  logger.info('Server shutting down...');
+  if (wsServer && typeof wsServer.close === 'function') {
+    try {
+      wsServer.close(() => {
+        logger.info('WebSocket server closed.');
         process.exit(0);
+      });
+    } catch (error) {
+      logger.error('Error closing WebSocket server:', error);
+      process.exit(1);
     }
+  } else {
+    logger.info('No WebSocket server to close or already closed.');
+    process.exit(0);
+  }
 };
 
 process.on('SIGTERM', handleShutdown);
 process.on('SIGINT', handleShutdown);
 
 process.on('uncaughtException', async (err) => {
-    logger.error('Uncaught Exception:', err);
-    console.error('Uncaught Exception:', err);
-    await handleShutdown();
+  logger.error('Uncaught Exception:', err);
+  console.error('Uncaught Exception:', err);
+  await handleShutdown();
 });
 
+// Start the server with error handling
 server.listen(port, '0.0.0.0', () => {
-    logger.info(`Server is running on port ${port}`);
-    console.log(`Server is running on port ${port}`);
+  logger.info(`Server is running on port ${port}`);
+  console.log(`Server is running on port ${port}`);
+  console.log(`Health check endpoint available at: http://localhost:${port}/health`);
+}).on('error', (error) => {
+  logger.error(`Failed to start server: ${error.message}`);
+  console.error(`Failed to start server: ${error.message}`);
+  process.exit(1);
 });

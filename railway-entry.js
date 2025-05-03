@@ -1,0 +1,88 @@
+/**
+ * Railway Entry Point
+ * 
+ * This is a simplified entry point for Railway deployment that focuses on
+ * providing a reliable health check endpoint while gradually initializing
+ * the full application.
+ */
+
+// Load environment variables
+require('dotenv').config();
+
+// Import required modules
+const express = require('express');
+const http = require('http');
+const cors = require('cors');
+
+// Create Express app
+const app = express();
+const port = process.env.PORT || process.env.API_PORT || 3000;
+
+// Basic middleware
+app.use(cors());
+app.use(express.json());
+
+// Simple health check endpoint for Railway
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'WhatsApp Services API is healthy',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'WhatsApp Services API is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Start the server
+server.listen(port, '0.0.0.0', () => {
+  console.log(`Railway entry point running on port ${port}`);
+  console.log(`Health check endpoint available at: http://localhost:${port}/health`);
+  
+  // Once the server is running and health checks can pass,
+  // initialize the full application in the background
+  setTimeout(() => {
+    try {
+      console.log('Initializing full application...');
+      require('./node-api/index');
+      console.log('Full application initialized successfully');
+    } catch (error) {
+      console.error('Error initializing full application:', error);
+    }
+  }, 2000); // Wait 2 seconds before initializing the full app
+}).on('error', (error) => {
+  console.error(`Failed to start server: ${error.message}`);
+  process.exit(1);
+});
+
+// Handle shutdown signals
+process.on('SIGTERM', () => {
+  console.log('Received SIGTERM, shutting down gracefully');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('Received SIGINT, shutting down gracefully');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  // Don't exit the process to keep the health check endpoint alive
+});

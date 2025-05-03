@@ -8,9 +8,10 @@ cmds = ["cp -r node-api/* . && npm install"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "node --no-warnings index.js"
+cmd = "node --no-warnings railway-entry.js"
 
 [variables]
 PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium"
 PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
 PUPPETEER_DISABLE_DEV_SHM_USAGE = "true"
+DISABLE_CRON_JOBS = "false"
