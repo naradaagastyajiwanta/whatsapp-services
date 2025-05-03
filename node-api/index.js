@@ -43,6 +43,10 @@ app.use('/api/auth', authRoutes);
 const waRoutes = require('./routes/waRoutes');
 app.use('/api/whatsapp', waRoutes);
 
+// Tambahkan rute Webhook
+const webhookRoutes = require('./routes/webhookRoutes');
+app.use('/api/webhook', webhookRoutes);
+
 app.use((req, res, next) => {
     res.status(404).json({
         message: 'Route tidak ditemukan'

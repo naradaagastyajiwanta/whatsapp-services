@@ -75,6 +75,12 @@ class WhatsAppService {
                 this.isAuthenticated = false;
             });
 
+            // Event listener untuk pesan masuk
+            this.client.on('message', (message) => {
+                console.log('Pesan masuk:', message.body);
+                this.handleIncomingMessage(message);
+            });
+
             console.log('Initializing WhatsApp client...');
             await this.client.initialize();
             console.log('WhatsApp client initialization completed');
@@ -169,6 +175,65 @@ class WhatsAppService {
                 success: false,
                 error: error.message
             };
+        }
+    }
+
+    handleIncomingMessage(message) {
+        // Implementasi untuk menangani pesan masuk
+        console.log('Pesan masuk dari:', message.from);
+        console.log('Isi pesan:', message.body);
+        
+        // Kirim pesan ke webhook yang terdaftar
+        this.sendToWebhooks({
+            from: message.from,
+            body: message.body,
+            timestamp: message.timestamp,
+            type: message.type,
+            hasMedia: message.hasMedia,
+            id: message.id._serialized,
+            isGroup: message.isGroup,
+            author: message.author || null,
+            deviceType: message.deviceType,
+            isForwarded: message.isForwarded
+        });
+    }
+
+    // Menyimpan daftar webhook yang terdaftar
+    webhooks = [];
+
+    // Mendaftarkan webhook baru
+    registerWebhook(url) {
+        if (!this.webhooks.includes(url)) {
+            this.webhooks.push(url);
+            console.log(`Webhook registered: ${url}`);
+            return true;
+        }
+        return false;
+    }
+
+    // Menghapus webhook
+    unregisterWebhook(url) {
+        const index = this.webhooks.indexOf(url);
+        if (index !== -1) {
+            this.webhooks.splice(index, 1);
+            console.log(`Webhook unregistered: ${url}`);
+            return true;
+        }
+        return false;
+    }
+
+    // Mengirim data ke semua webhook yang terdaftar
+    async sendToWebhooks(data) {
+        const axios = require('axios');
+        
+        for (const webhookUrl of this.webhooks) {
+            try {
+                console.log(`Sending data to webhook: ${webhookUrl}`);
+                await axios.post(webhookUrl, data);
+                console.log(`Data sent successfully to: ${webhookUrl}`);
+            } catch (error) {
+                console.error(`Error sending data to webhook ${webhookUrl}:`, error.message);
+            }
         }
     }
 }
