@@ -22,14 +22,16 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Set environment variables for Puppeteer
+# Set environment variables for Puppeteer and database
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PUPPETEER_DISABLE_DEV_SHM_USAGE=true
 ENV DISABLE_CRON_JOBS=false
 ENV RAILWAY_ENVIRONMENT=production
-ENV PGPASSWORD=hVIxgPn8NnOIGo3sf7OOO1dayFbIJz8R
-ENV POSTGRES_PASSWORD=hVIxgPn8NnOIGo3sf7OOO1dayFbIJz8R
+
+# Set PostgreSQL credentials exactly as shown in Railway dashboard
+ENV PGPASSWORD="hVIxgPn8NnOIGo3sf7ODO1dayFbIJz8R"
+ENV POSTGRES_PASSWORD="hVIxgPn8NnOIGo3sf7ODO1dayFbIJz8R"
 
 # Set working directory
 WORKDIR /app
