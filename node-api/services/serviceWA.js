@@ -1,5 +1,5 @@
 const qrcode = require('qrcode');
-const { Client } = require('whatsapp-web.js');
+const { Client, LocalAuth } = require('whatsapp-web.js');
 const WASession = require('../models/dataWA');
 
 class WhatsAppService {
@@ -14,37 +14,11 @@ class WhatsAppService {
 
     async initializeClient() {
         try {
-            const customAuth = {
-                async saveSession(sessionData) {
-                    try {
-                        const serializedSession = JSON.stringify(sessionData);
-                        await WASession.upsert({
-                            id: 'default-session',
-                            session_data: serializedSession
-                        });
-                        console.log('Session saved to database successfully');
-                    } catch (error) {
-                        console.error('Failed to save session:', error);
-                    }
-                },
-                async restoreSession() {
-                    try {
-                        const savedSession = await WASession.findByPk('default-session');
-                        if (savedSession) {
-                            console.log('Restoring existing session...');
-                            return JSON.parse(savedSession.session_data);
-                        }
-                        console.log('No existing session found');
-                        return null;
-                    } catch (error) {
-                        console.error('Failed to restore session:', error);
-                        return null;
-                    }
-                }
-            };
-
+            // Menggunakan LocalAuth dari whatsapp-web.js
             this.client = new Client({
-                authStrategy: customAuth,
+                authStrategy: new LocalAuth({
+                    dataPath: './whatsapp-sessions'
+                }),
                 puppeteer: {
                     headless: true,
                     args: [
@@ -94,7 +68,6 @@ class WhatsAppService {
                 this.isAuthenticated = true;
                 this.qrCode = null;
                 this.qrCodeBase64 = null;
-                customAuth.saveSession(session);
             });
 
             this.client.on('auth_failure', (msg) => {
