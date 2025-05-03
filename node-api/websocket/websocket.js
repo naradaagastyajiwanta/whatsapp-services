@@ -229,6 +229,9 @@ const setupWebSocket = (server) => {
     });
 
     logger.info('WebSocket server is running');
+
+    // Return the WebSocket server instance
+    return wss;
 };
 
 module.exports = setupWebSocket;

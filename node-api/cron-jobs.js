@@ -7,7 +7,6 @@
 const { memoryUsage } = require('process');
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
 const logger = require('./utils/logging');
 const { getActiveClients, disconnectClientButKeepSession } = require('./services/waService');
 
@@ -45,6 +44,11 @@ const monitorMemoryUsage = () => {
 const autoDisconnectInactiveClients = () => {
   try {
     const clients = getActiveClients();
+    if (!clients) {
+      logger.info('No active clients to disconnect');
+      return;
+    }
+    
     const clientEntries = Object.entries(clients);
     
     if (clientEntries.length === 0) return;
@@ -80,20 +84,34 @@ const monitorDiskUsage = () => {
       return;
     }
     
-    // Dapatkan ukuran folder
-    exec(`du -sh "${sessionDir}"`, (error, stdout, stderr) => {
-      if (error) {
-        logger.error(`Error getting disk usage: ${error.message}`);
-        return;
+    // Calculate directory size using Node.js instead of 'du' command
+    const calculateDirSize = (dirPath) => {
+      let totalSize = 0;
+      
+      try {
+        const files = fs.readdirSync(dirPath);
+        
+        for (const file of files) {
+          const filePath = path.join(dirPath, file);
+          const stats = fs.statSync(filePath);
+          
+          if (stats.isDirectory()) {
+            totalSize += calculateDirSize(filePath);
+          } else {
+            totalSize += stats.size;
+          }
+        }
+      } catch (err) {
+        logger.error(`Error calculating directory size: ${err.message}`);
       }
       
-      if (stderr) {
-        logger.error(`Disk usage stderr: ${stderr}`);
-        return;
-      }
-      
-      logger.info(`WhatsApp sessions disk usage: ${stdout.trim()}`);
-    });
+      return totalSize;
+    };
+    
+    const totalSizeBytes = calculateDirSize(sessionDir);
+    const totalSizeMB = (totalSizeBytes / (1024 * 1024)).toFixed(2);
+    
+    logger.info(`WhatsApp sessions disk usage: ${totalSizeMB} MB`);
   } catch (error) {
     logger.error(`Error monitoring disk usage: ${error.message}`);
   }
@@ -101,16 +119,21 @@ const monitorDiskUsage = () => {
 
 // Inisialisasi cron jobs
 const initCronJobs = () => {
-  // Memory monitoring setiap 15 menit
-  setInterval(monitorMemoryUsage, 15 * 60 * 1000);
-  
-  // Disk usage monitoring setiap 1 jam
-  setInterval(monitorDiskUsage, 60 * 60 * 1000);
-  
-  logger.info('Cron jobs initialized');
+  try {
+    // Memory monitoring setiap 15 menit
+    setInterval(monitorMemoryUsage, 15 * 60 * 1000);
+    
+    // Disk usage monitoring setiap 1 jam
+    setInterval(monitorDiskUsage, 60 * 60 * 1000);
+    
+    logger.info('Cron jobs initialized');
+  } catch (error) {
+    logger.error(`Error initializing cron jobs: ${error.message}`);
+    // Don't throw the error, just log it
+  }
 };
 
 // Export untuk digunakan di main app
 module.exports = {
   initCronJobs
-}; 
+};
