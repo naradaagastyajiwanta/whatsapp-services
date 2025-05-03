@@ -19,8 +19,29 @@ RUN apt-get update && apt-get install -y \
     libgtk-3-0 \
     ca-certificates \
     fonts-liberation \
+    wget \
+    gnupg \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Verifikasi instalasi Chromium dan buat symlink jika perlu
+RUN if [ -f /usr/bin/chromium ]; then \
+        echo "Chromium found at /usr/bin/chromium"; \
+    elif [ -f /usr/bin/chromium-browser ]; then \
+        echo "Chromium found at /usr/bin/chromium-browser"; \
+        ln -s /usr/bin/chromium-browser /usr/bin/chromium; \
+    else \
+        echo "Installing Chrome from Google's repository"; \
+        wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+        && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
+        && apt-get update \
+        && apt-get install -y google-chrome-stable \
+        && ln -s /usr/bin/google-chrome-stable /usr/bin/chromium; \
+    fi
+
+# Verify Chromium/Chrome installation
+RUN ls -la /usr/bin/chrom* || echo "No Chromium found in /usr/bin"
+RUN ls -la /usr/bin/google-chrome* || echo "No Chrome found in /usr/bin"
 
 # Set environment variables for Puppeteer and database
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true

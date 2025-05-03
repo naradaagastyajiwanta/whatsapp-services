@@ -27,6 +27,17 @@ class WhatsAppService {
             const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
             console.log(`Initializing WhatsApp client in ${isRailway ? 'Railway' : 'local'} environment`);
             
+            // Coba beberapa path Chromium yang umum digunakan
+            let chromiumPaths = [
+                '/usr/bin/chromium',
+                '/usr/bin/chromium-browser',
+                '/usr/bin/google-chrome',
+                '/usr/bin/google-chrome-stable'
+            ];
+            
+            // Log path yang akan dicoba
+            console.log('Akan mencoba path Chromium berikut:', chromiumPaths.join(', '));
+            
             // Menggunakan LocalAuth dari whatsapp-web.js
             this.client = new Client({
                 authStrategy: new LocalAuth({
@@ -48,8 +59,8 @@ class WhatsAppService {
                         '--ignore-certificate-errors-spki-list',
                         '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                     ],
-                    // Gunakan Chrome yang sudah terinstall di Railway jika tersedia
-                    executablePath: isRailway ? '/usr/bin/chromium-browser' : (process.env.CHROME_BIN || null),
+                    // Gunakan path Chromium yang benar di Railway
+                    executablePath: isRailway ? '/usr/bin/chromium' : (process.env.CHROME_BIN || null),
                     ignoreHTTPSErrors: true
                 }
             });
@@ -118,12 +129,20 @@ class WhatsAppService {
             });
 
             console.log('Initializing WhatsApp client...');
-            await this.client.initialize().catch(err => {
-                console.error('Failed to initialize WhatsApp client:', err);
-                throw err;
-            });
-            console.log('WhatsApp client initialization completed');
-
+            try {
+                await this.client.initialize();
+                console.log('WhatsApp client initialization completed');
+            } catch (initError) {
+                console.error('Failed to initialize WhatsApp client:', initError);
+                
+                // Jika gagal menginisialisasi karena masalah Chromium, aktifkan mode headless
+                if (initError.message && initError.message.includes('Failed to launch the browser process')) {
+                    console.log('Switching to headless mode due to browser launch failure');
+                    this.headlessMode = true;
+                }
+                
+                throw initError;
+            }
         } catch (error) {
             console.error('Error in initializeClient:', error);
             throw error;
