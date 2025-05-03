@@ -53,7 +53,11 @@ server.listen(port, '0.0.0.0', () => {
   setTimeout(() => {
     try {
       console.log('Initializing full application...');
-      require('./node-api/index');
+      // Check if we're in a Docker environment (where files are in the root directory)
+      // or in a local environment (where files are in the node-api directory)
+      const indexPath = require('fs').existsSync('./index.js') ? './index.js' : './node-api/index.js';
+      console.log(`Loading application from: ${indexPath}`);
+      require(indexPath);
       console.log('Full application initialized successfully');
     } catch (error) {
       console.error('Error initializing full application:', error);
