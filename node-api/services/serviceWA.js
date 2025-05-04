@@ -118,8 +118,17 @@ class WhatsAppService {
             });
 
             this.client.on('auth_failure', (msg) => {
-                console.error('WhatsApp authentication failed:', msg);
+                console.error('AUTH FAILURE:', msg);
                 this.isAuthenticated = false;
+                this.isReady = false;
+                // Optional: clear session data here if needed
+            });
+
+            this.client.on('disconnected', (reason) => {
+                console.warn('WhatsApp Client was logged out/disconnected:', reason);
+                this.isAuthenticated = false;
+                this.isReady = false;
+                // Optional: clear session data here if needed
             });
 
             // Event listener untuk pesan masuk
