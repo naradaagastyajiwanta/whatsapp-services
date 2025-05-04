@@ -247,6 +247,12 @@ class WhatsAppService {
 
         const formattedNumber = phone.includes('@c.us') ? phone : `${phone}@c.us`;
         try {
+            // Cek apakah nomor terdaftar di WhatsApp sebelum mengirim pesan
+            const isRegistered = await this.client.isRegisteredUser(formattedNumber);
+            console.log(`[WA] isRegisteredUser for ${formattedNumber}:`, isRegistered);
+            if (!isRegistered) {
+                return { success: false, error: 'Phone number is not registered on WhatsApp' };
+            }
             const result = await withTimeout(this.client.sendMessage(formattedNumber, message), TIMEOUT_MS);
             console.log(`[WA] Message sent successfully to ${formattedNumber} | messageId: ${result.id._serialized}`);
             return { success: true, messageId: result.id._serialized };
