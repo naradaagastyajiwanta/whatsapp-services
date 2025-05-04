@@ -238,21 +238,34 @@ class WhatsAppService {
 
         // Timeout wrapper
         const TIMEOUT_MS = 10000; // 10 seconds
-        function withTimeout(promise, ms) {
+        function withTimeout(promise, ms, errorMsg = 'Timeout sending message') {
             return Promise.race([
                 promise,
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout sending message')), ms))
+                new Promise((_, reject) => setTimeout(() => reject(new Error(errorMsg)), ms))
             ]);
         }
 
         const formattedNumber = phone.includes('@c.us') ? phone : `${phone}@c.us`;
         try {
             // Cek apakah nomor terdaftar di WhatsApp sebelum mengirim pesan
-            const isRegistered = await this.client.isRegisteredUser(formattedNumber);
-            console.log(`[WA] isRegisteredUser for ${formattedNumber}:`, isRegistered);
+            // Tambahkan timeout pada pengecekan nomor juga
+            let isRegistered;
+            try {
+                isRegistered = await withTimeout(
+                    this.client.isRegisteredUser(formattedNumber),
+                    TIMEOUT_MS,
+                    'Timeout checking WhatsApp registration'
+                );
+                console.log(`[WA] isRegisteredUser for ${formattedNumber}:`, isRegistered);
+            } catch (regError) {
+                console.error(`[WA] Error checking registration:`, regError);
+                return { success: false, error: regError.message };
+            }
+            
             if (!isRegistered) {
                 return { success: false, error: 'Phone number is not registered on WhatsApp' };
             }
+            
             const result = await withTimeout(this.client.sendMessage(formattedNumber, message), TIMEOUT_MS);
             console.log(`[WA] Message sent successfully to ${formattedNumber} | messageId: ${result.id._serialized}`);
             return { success: true, messageId: result.id._serialized };
