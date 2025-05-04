@@ -21,6 +21,11 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     wget \
     gnupg \
+    xdg-utils \
+    libdbus-1-3 \
+    libdrm2 \
+    libnspr4 \
+    --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
