@@ -214,50 +214,36 @@ class WhatsAppService {
         return this.client;
     }
 
-    // Method untuk mengirim pesan WhatsApp
+    /**
+     * Send WhatsApp Message with timeout and logging
+     * @param {string} phone
+     * @param {string} message
+     * @returns {Promise<{success: boolean, messageId?: string, error?: string}>}
+     */
     async sendMessage(phone, message) {
+        console.log(`[WA] sendMessage called at ${new Date().toISOString()} | phone: ${phone}, message: ${message}`);
+        if (!this.client || !this.isReady) {
+            console.error('[WA] WhatsApp client is not ready');
+            return { success: false, error: 'WhatsApp client is not ready' };
+        }
+
+        // Timeout wrapper
+        const TIMEOUT_MS = 10000; // 10 seconds
+        function withTimeout(promise, ms) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout sending message')), ms))
+            ]);
+        }
+
+        const formattedNumber = phone.includes('@c.us') ? phone : `${phone}@c.us`;
         try {
-            if (this.headlessMode) {
-                return {
-                    success: false,
-                    error: 'WhatsApp is running in headless mode'
-                };
-            }
-            
-            if (!this.client || !this.isReady) {
-                return {
-                    success: false,
-                    error: 'WhatsApp client is not ready'
-                };
-            }
-
-            // Format nomor telepon jika belum dalam format @c.us
-            const formattedNumber = phone.includes('@c.us') ? phone : `${phone}@c.us`;
-            
-            // Cek apakah nomor terdaftar di WhatsApp
-            const isRegistered = await this.client.isRegisteredUser(formattedNumber);
-            if (!isRegistered) {
-                return {
-                    success: false,
-                    error: 'Phone number is not registered on WhatsApp'
-                };
-            }
-
-            // Kirim pesan
-            const result = await this.client.sendMessage(formattedNumber, message);
-            
-            return {
-                success: true,
-                messageId: result.id._serialized,
-                timestamp: result.timestamp,
-                message: 'Message sent successfully'
-            };
-        } catch (error) {
-            console.error('Error sending message:', error);
-            return {
-                success: false,
-                error: error.message
-            };
+            const result = await withTimeout(this.client.sendMessage(formattedNumber, message), TIMEOUT_MS);
+            console.log(`[WA] Message sent successfully to ${formattedNumber} | messageId: ${result.id._serialized}`);
+            return { success: true, messageId: result.id._serialized };
+        } catch (err) {
+            console.error(`[WA] Failed to send message to ${formattedNumber}:`, err);
+            return { success: false, error: err.message || 'Failed to send message' };
         }
     }
 
